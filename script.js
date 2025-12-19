@@ -1,35 +1,51 @@
-function generatePlan() {
-    let subjects = document.getElementById("subjects").value.split(",");
-    let hours = parseInt(document.getElementById("hours").value);
-    let weak = document.getElementById("weak").value.split(",");
+async function generatePlan() {
+    const subjects = document.getElementById("subjects").value
+        .split(",")
+        .map(s => s.trim())
+        .filter(s => s !== "");
 
-    let output = document.getElementById("output");
+    const hours = parseInt(document.getElementById("hours").value);
+
+    const weakSubjects = document.getElementById("weak").value
+        .split(",")
+        .map(s => s.trim())
+        .filter(s => s !== "");
+
+    const output = document.getElementById("output");
     output.innerHTML = "";
 
-    if (!subjects || subjects.length === 0 || isNaN(hours)) {
+    if (subjects.length === 0 || isNaN(hours)) {
         output.innerHTML = "<p>Please enter all details.</p>";
         return;
     }
 
-    subjects = subjects.map(s => s.trim()).filter(s => s !== "");
-    weak = weak.map(s => s.trim());
+    try {
+        const response = await fetch("http://localhost:5000/generate-plan", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                subjects: subjects,
+                hours: hours,
+                weakSubjects: weakSubjects
+            })
+        });
 
-    let totalSubjects = subjects.length;
-    let baseTime = hours / totalSubjects;
+        const data = await response.json();
 
-    let studyPlan = "<ul>";
+        let studyPlanHTML = "<ul>";
 
-    subjects.forEach(sub => {
-        let time = baseTime;
+        data.studyPlan.forEach(item => {
+            studyPlanHTML += `<li><strong>${item.subject}:</strong> ${item.hours} hours</li>`;
+        });
 
-        if (weak.includes(sub)) {
-            time += 1; // extra 1 hour for weak subjects
-        }
+        studyPlanHTML += "</ul>";
 
-        studyPlan += `<li><strong>${sub}:</strong> ${time.toFixed(1)} hours</li>`;
-    });
+        output.innerHTML = studyPlanHTML;
 
-    studyPlan += "</ul>";
-
-    output.innerHTML = studyPlan;
+    } catch (error) {
+        output.innerHTML = "<p>Server error. Please try again.</p>";
+        console.error(error);
+    }
 }
